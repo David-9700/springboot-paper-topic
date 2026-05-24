@@ -57,7 +57,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Dependency Check
-        run: mvn dependency-check:check -DfailBuildOnCVSS=7
+        run: mvn dependency-check:check -DfailBuildOnCVSS=7 -DskipTests
 
   # Stage 3: Build Docker Image & Deploy
   deploy:
