@@ -10,6 +10,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.ArrayList;
 
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -52,8 +54,13 @@ class AiAgentRecommendationControllerTest {
 
     @Test
     void testGetUserRecommendations() throws Exception {
+        // Create a simple HashMap instead of using PageUtils constructor
+        java.util.HashMap<String, Object> mockPage = new java.util.HashMap<>();
+        mockPage.put("list", new ArrayList<>());
+        mockPage.put("total", 0);
+        
         when(recommendationService.getUserRecommendations(anyLong(), anyString(), anyMap()))
-            .thenReturn(new com.utils.PageUtils(null));
+            .thenReturn(mockPage);
 
         mockMvc.perform(get("/aiagent/recommendation/list")
                 .param("userId", "1")
