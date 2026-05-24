@@ -54,10 +54,14 @@ class AiAgentRecommendationControllerTest {
 
     @Test
     void testGetUserRecommendations() throws Exception {
-        // Create a simple HashMap instead of using PageUtils constructor
-        java.util.HashMap<String, Object> mockPage = new java.util.HashMap<>();
-        mockPage.put("list", new ArrayList<>());
-        mockPage.put("total", 0);
+        // Create a mock PageUtils object with HashMap
+        java.util.HashMap<String, Object> pageData = new java.util.HashMap<>();
+        pageData.put("list", new ArrayList<>());
+        pageData.put("total", 0);
+        pageData.put("currPage", 1);
+        pageData.put("pageSize", 10);
+        
+        com.utils.PageUtils mockPage = new com.utils.PageUtils(pageData);
         
         when(recommendationService.getUserRecommendations(anyLong(), anyString(), anyMap()))
             .thenReturn(mockPage);

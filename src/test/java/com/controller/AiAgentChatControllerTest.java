@@ -60,8 +60,11 @@ class AiAgentChatControllerTest {
 
     @Test
     void testGetSessionHistory() throws Exception {
+        // Create a mock PageUtils object
+        com.utils.PageUtils mockPage = new com.utils.PageUtils(new java.util.HashMap<>());
+        
         when(aiAgentChatService.getSessionHistory(anyString(), anyMap()))
-            .thenReturn(new com.utils.PageUtils(null));
+            .thenReturn(mockPage);
 
         mockMvc.perform(get("/aiagent/chat/history")
                 .param("sessionId", "test-session-123")
