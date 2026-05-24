@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据分析大屏 - 论文选题系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .dashboard-header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .dashboard-header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .chart {
+            width: 100%;
+            height: 350px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h1>📊 数据分析大屏</h1>
+        <p>论文选题管理系统 - 实时数据统计</p>
+    </div>
+
+    <div id="loading" class="loading">
+        加载中...
+    </div>
+
+    <div id="dashboard" style="display: none;">
+        <!-- 统计卡片 -->
+        <div class="stats-cards">
+            <div class="stat-card">
+                <div class="icon">👨‍🎓</div>
+                <div class="label">学生总数</div>
+                <div class="value" id="studentCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">👨‍🏫</div>
+                <div class="label">教师总数</div>
+                <div class="value" id="teacherCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📝</div>
+                <div class="label">课题总数</div>
+                <div class="value" id="topicCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">✅</div>
+                <div class="label">已选题</div>
+                <div class="value" id="selectedCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">⏳</div>
+                <div class="label">待审核</div>
+                <div class="value" id="pendingCount">-</div>
+            </div>
+        </div>
+
+        <!-- 图表区域 -->
+        <div class="charts-grid">
+            <!-- 课题分类统计 -->
+            <div class="chart-container">
+                <h3>📚 课题分类统计</h3>
+                <div id="topicCategoryChart" class="chart"></div>
+            </div>
+
+            <!-- 学院学生分布 -->
+            <div class="chart-container">
+                <h3>🏫 学院学生分布</h3>
+                <div id="collegeDistributionChart" class="chart"></div>
+            </div>
+
+            <!-- 选题趋势 -->
+            <div class="chart-container full-width">
+                <h3>📈 选题趋势（近12个月）</h3>
+                <div id="selectionTrendChart" class="chart"></div>
+            </div>
+
+            <!-- 教师指导学生统计 -->
+            <div class="chart-container">
+                <h3>👨‍🏫 教师指导学生排行 Top 10</h3>
+                <div id="teacherStudentChart" class="chart"></div>
+            </div>
+
+            <!-- 开题报告统计 -->
+            <div class="chart-container">
+                <h3>📋 开题报告统计</h3>
+                <div id="kaitiStatsChart" class="chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/springboot3wd7d5i4';
+
+        // 页面加载时获取数据
+        window.onload = async function() {
+            try {
+                await loadDashboardData();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('loading').textContent = '加载失败，请刷新页面重试';
+            }
+        };
+
+        // 加载Dashboard数据
+        async function loadDashboardData() {
+            const response = await fetch(`${API_BASE_URL}/analytics/dashboard`);
+            const data = await response.json();
+            
+            if (data.code === 0) {
+                const dashboardData = data.data;
+                
+                // 更新统计卡片
+                updateStatCards(dashboardData.overview);
+                
+                // 渲染图表
+                renderTopicCategoryChart(dashboardData.topicCategories);
+                renderCollegeDistributionChart(dashboardData.collegeDistribution);
+                renderSelectionTrendChart(dashboardData.selectionTrend);
+                renderTeacherStudentChart(dashboardData.teacherStudentCount || []);
+                renderKaitiStatsChart(dashboardData.kaitiStats);
+            }
+        }
+
+        // 更新统计卡片
+        function updateStatCards(overview) {
+            document.getElementById('studentCount').textContent = overview.studentCount || 0;
+            document.getElementById('teacherCount').textContent = overview.teacherCount || 0;
+            document.getElementById('topicCount').textContent = overview.topicCount || 0;
+            document.getElementById('selectedCount').textContent = overview.selectedCount || 0;
+            document.getElementById('pendingCount').textContent = overview.pendingCount || 0;
+        }
+
+        // 渲染课题分类图表
+        function renderTopicCategoryChart(data) {
+            const chart = echarts.init(document.getElementById('topicCategoryChart'));
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    top: 'middle'
+                },
+                series: [
+                    {
+                        name: '课题分类',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 10,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        label: {
+                            show: true,
+                            formatter: '{b}: {c}'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: 16,
+                                fontWeight: 'bold'
+                            }
+                        },
+                        data: data.map(item => ({
+                            name: item.ketifenlei || '未分类',
+                            value: item.count
+                        }))
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+        }
+
+        // 渲染学院分布图表
+        function renderCollegeDistributionChart(data) {
+            const chart = echarts.init(document.getElementById('collegeDistributionChart'));
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'value',
+                    boundaryGap: [0, 0.01]
+                },
+                yAxis: {
+                    type: 'category',
+                    data: data.map(item => item.yuanximingcheng || '未知学院')
+                },
+                series: [
+                    {
+                        name: '学生人数',
+                        type: 'bar',
+                        data: data.map(item => item.count),
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                                { offset: 0, color: '#667eea' },
+                                { offset: 1, color: '#764ba2' }
+                            ])
+                        },
+                        label: {
+                            show: true,
+                            position: 'right'
+                        }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+        }
+
+        // 渲染选题趋势图表
+        function renderSelectionTrendChart(data) {
+            const chart = echarts.init(document.getElementById('selectionTrendChart'));
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis'
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: data.map(item => item.month)
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [
+                    {
+                        name: '选题数量',
+                        type: 'line',
+                        smooth: true,
+                        data: data.map(item => item.count),
+                        itemStyle: {
+                            color: '#667eea'
+                        },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(102, 126, 234, 0.5)' },
+                                { offset: 1, color: 'rgba(102, 126, 234, 0.1)' }
+                            ])
+                        },
+                        markPoint: {
+                            data: [
+                                { type: 'max', name: '最大值' },
+                                { type: 'min', name: '最小值' }
+                            ]
+                        }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+        }
+
+        // 渲染教师指导学生图表
+        function renderTeacherStudentChart(data) {
+            const chart = echarts.init(document.getElementById('teacherStudentChart'));
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'value'
+                },
+                yAxis: {
+                    type: 'category',
+                    data: data.map(item => item.jiaoshixingming).reverse()
+                },
+                series: [
+                    {
+                        name: '学生数',
+                        type: 'bar',
+                        data: data.map(item => item.studentCount).reverse(),
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                                { offset: 0, color: '#f093fb' },
+                                { offset: 1, color: '#f5576c' }
+                            ])
+                        },
+                        label: {
+                            show: true,
+                            position: 'right'
+                        }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+        }
+
+        // 渲染开题报告统计图表
+        function renderKaitiStatsChart(data) {
+            const chart = echarts.init(document.getElementById('kaitiStatsChart'));
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    top: 'middle'
+                },
+                series: [
+                    {
+                        name: '开题报告',
+                        type: 'pie',
+                        radius: '70%',
+                        data: [
+                            { 
+                                value: data.approved || 0, 
+                                name: '已通过',
+                                itemStyle: { color: '#52c41a' }
+                            },
+                            { 
+                                value: (data.submitted || 0) - (data.approved || 0), 
+                                name: '待审核',
+                                itemStyle: { color: '#faad14' }
+                            }
+                        ],
+                        emphasis: {
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        },
+                        label: {
+                            formatter: '{b}: {c}\n通过率: ' + (data.approvalRate || 0) + '%'
+                        }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+        }
+
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            const charts = document.querySelectorAll('.chart');
+            charts.forEach(chart => {
+                const instance = echarts.getInstanceByDom(chart);
+                if (instance) {
+                    instance.resize();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
