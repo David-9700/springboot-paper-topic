@@ -36,10 +36,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Build Project
-        run: mvn clean package -DskipTests -B
-
-      - name: Compile Test Classes (without running)
-        run: mvn test-compile -B
+        run: mvn clean compile test-compile -DskipTests -Dmaven.test.skip.exec=true -B
 
   # Stage 2: Security Scan
   security-scan:
