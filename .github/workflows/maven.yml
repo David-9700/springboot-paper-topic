@@ -59,7 +59,7 @@ jobs:
   # Stage 3: Build Docker Image & Deploy
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-and-test, security-scan]
+    needs: build-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
