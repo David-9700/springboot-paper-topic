@@ -36,7 +36,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Build Project
-        run: mvn clean compile test-compile -DskipTests -Dmaven.test.skip.exec=true -B
+        run: mvn clean package -DskipTests -Dmaven.test.skip.exec=true -B
 
   # Stage 2: Security Scan (Optional - skipped due to NVD access issues)
   # security-scan:
